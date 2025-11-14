@@ -148,6 +148,51 @@ app.get("/", (req, res) => {
     const clearBtn = document.getElementById('btn-clear');
     const testBtn = document.getElementById('btn-send-test');
 
+    // --- Vehicle definitions and helper functions for assignment & maps ---
+    const VEHICLE_CENTER = { lat: 23.0225, lon: 72.5714 }; // default center (adjust if needed)
+    const vehicles = [
+      { id: 1, name: 'Engine 1', lat: VEHICLE_CENTER.lat + 0.004, lon: VEHICLE_CENTER.lon + 0.002 },
+      { id: 2, name: 'Engine 2', lat: VEHICLE_CENTER.lat - 0.003, lon: VEHICLE_CENTER.lon - 0.003 },
+      { id: 3, name: 'Engine 3', lat: VEHICLE_CENTER.lat + 0.006, lon: VEHICLE_CENTER.lon - 0.0025 },
+      { id: 4, name: 'Engine 4', lat: VEHICLE_CENTER.lat - 0.005, lon: VEHICLE_CENTER.lon + 0.004 },
+      { id: 5, name: 'Engine 5', lat: VEHICLE_CENTER.lat + 0.0015, lon: VEHICLE_CENTER.lon - 0.005 }
+    ];
+
+    function haversineDist(lat1, lon1, lat2, lon2) {
+      function toRad(x){return x*Math.PI/180}
+      const R = 6371; // km
+      const dLat = toRad(lat2-lat1);
+      const dLon = toRad(lon2-lon1);
+      const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+      const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R*c;
+    }
+
+    function getEventCoords(ev) {
+      const p = ev.payload || {};
+      if (p.lat != null && p.lon != null) return { lat: +p.lat, lon: +p.lon };
+      if (p.latitude != null && p.longitude != null) return { lat: +p.latitude, lon: +p.longitude };
+      if (p.room_number != null) {
+        const baseLat = VEHICLE_CENTER.lat;
+        const baseLon = VEHICLE_CENTER.lon;
+        const r = (Number(p.room_number) || 1) % 25;
+        const dLat = ((r % 5) - 2) * 0.0018;
+        const dLon = (Math.floor(r/5) - 2) * 0.0022;
+        return { lat: baseLat + dLat, lon: baseLon + dLon };
+      }
+      return { lat: VEHICLE_CENTER.lat, lon: VEHICLE_CENTER.lon };
+    }
+
+    function assignNearestVehicle(ev) {
+      const coords = getEventCoords(ev);
+      let best = null;
+      for (const v of vehicles) {
+        const d = haversineDist(coords.lat, coords.lon, v.lat, v.lon);
+        if (!best || d < best.dist) best = { vehicle: v, dist: d };
+      }
+      return { coords, assigned: best.vehicle, distanceKm: best.dist };
+    }
+
     async function loadEvents() {
       try {
         const r = await fetch('/events');
@@ -167,11 +212,25 @@ app.get("/", (req, res) => {
         const isFire = ev.payload.fire;
         const cardClass = isFire ? 'card danger' : 'card';
         const fireIcon = isFire ? '🔥' : '✅';
+        let assignHtml = '';
+        if (isFire) {
+          const a = assignNearestVehicle(ev);
+          const origin = \`\${a.assigned.lat},\${a.assigned.lon}\`;
+          const dest = \`\${a.coords.lat},\${a.coords.lon}\`;
+          const mapsUrl = \`https://www.google.com/maps/dir/?api=1&origin=\${encodeURIComponent(origin)}&destination=\${encodeURIComponent(dest)}&travelmode=driving\`;
+          assignHtml = \`
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+              <div style="font-size:0.95rem;color:#ffd6cc">Assigned: <strong>\${a.assigned.name}</strong> (\${a.distanceKm.toFixed(2)} km)</div>
+              <a title="Open route in Google Maps" href="\${mapsUrl}" target="_blank" style="text-decoration:none;font-size:1.4rem">🚒</a>
+            </div>\`;
+        }
+
         return \`
           <div class="\${cardClass}">
             <div><strong>\${fireIcon} \${ev.type}</strong></div>
             <div class="meta">\${new Date(ev.timestamp).toLocaleString()}</div>
             <pre>\${JSON.stringify(ev.payload, null, 2)}</pre>
+            \${assignHtml}
           </div>\`;
       }).join('');
     }
@@ -185,11 +244,17 @@ app.get("/", (req, res) => {
     };
 
     testBtn.onclick = async () => {
+      // create a test event with coordinates near VEHICLE_CENTER so the maps link can be tested
+      const jitter = () => (Math.random() - 0.5) * 0.01; // ~ +/-0.005 degrees
+      const lat = VEHICLE_CENTER.lat + jitter();
+      const lon = VEHICLE_CENTER.lon + jitter();
       const body = {
-        room_number: 1,
+        room_number: Math.ceil(Math.random()*20),
         fire: Math.random() > 0.5,
         temperature: (20 + Math.random()*60).toFixed(1),
-        humidity: (20 + Math.random()*70).toFixed(1)
+        humidity: (20 + Math.random()*70).toFixed(1),
+        lat,
+        lon
       };
       await fetch('/fire', {
         method: 'POST',
@@ -209,6 +274,6 @@ app.get("/", (req, res) => {
 
 // ===== Start Server =====
 app.listen(PORT, () => {
-  console.log(`🔥 Server running at http://localhost:${PORT}`);
-  console.log(`POST fire events to: http://localhost:${PORT}/fire`);
+  console.log(`🔥 Server running at https://firedetection-iot.onrender.com:${PORT}`);
+  console.log(`POST fire events to: https://firedetection-iot.onrender.com:${PORT}/fire`);
 });
