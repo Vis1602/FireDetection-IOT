@@ -149,14 +149,15 @@ app.get("/", (req, res) => {
     const testBtn = document.getElementById('btn-send-test');
 
     // --- Vehicle definitions and helper functions for assignment & maps ---
-    const VEHICLE_CENTER = { lat: 23.0225, lon: 72.5714 }; // default center (adjust if needed)
+    const VEHICLE_CENTER = { lat: 23.192623, lon: 72.629016 }; // default center (adjust if needed)
     const vehicles = [
-      { id: 1, name: 'Engine 1', lat: VEHICLE_CENTER.lat + 0.004, lon: VEHICLE_CENTER.lon + 0.002 },
-      { id: 2, name: 'Engine 2', lat: VEHICLE_CENTER.lat - 0.003, lon: VEHICLE_CENTER.lon - 0.003 },
-      { id: 3, name: 'Engine 3', lat: VEHICLE_CENTER.lat + 0.006, lon: VEHICLE_CENTER.lon - 0.0025 },
-      { id: 4, name: 'Engine 4', lat: VEHICLE_CENTER.lat - 0.005, lon: VEHICLE_CENTER.lon + 0.004 },
-      { id: 5, name: 'Engine 5', lat: VEHICLE_CENTER.lat + 0.0015, lon: VEHICLE_CENTER.lon - 0.005 }
-    ];
+  { id: 1, name: 'Engine 1', lat: 23.1931, lon: 72.6287 }, // Gate 1
+  { id: 2, name: 'Engine 2', lat: 23.1919, lon: 72.6302 }, // Hostel side
+  { id: 3, name: 'Engine 3', lat: 23.1940, lon: 72.6295 }, // Academic block side
+  { id: 4, name: 'Engine 4', lat: 23.1905, lon: 72.6280 }, // Parking area side
+  { id: 5, name: 'Engine 5', lat: 23.1933, lon: 72.6312 }  // Canteen side
+];
+
 
     function haversineDist(lat1, lon1, lat2, lon2) {
       function toRad(x){return x*Math.PI/180}
@@ -244,29 +245,30 @@ app.get("/", (req, res) => {
     };
 
     testBtn.onclick = async () => {
-      // create a test event with coordinates near VEHICLE_CENTER so the maps link can be tested
-      const jitter = () => (Math.random() - 0.5) * 0.01; // ~ +/-0.005 degrees
-      const lat = VEHICLE_CENTER.lat + jitter();
-      const lon = VEHICLE_CENTER.lon + jitter();
-      const body = {
-        room_number: Math.ceil(Math.random()*20),
-        fire: Math.random() > 0.5,
-        temperature: (20 + Math.random()*60).toFixed(1),
-        humidity: (20 + Math.random()*70).toFixed(1),
-        lat,
-        lon
-      };
-      await fetch('/fire', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(body)
-      });
-      loadEvents();
-    };
+  const body = {
+    room_number: Math.ceil(Math.random() * 20),
+    fire: true,   // Always fire
+    temperature: (60 + Math.random() * 40).toFixed(1),
+    humidity: (20 + Math.random() * 60).toFixed(1),
+
+    // EXACT PDEU LOCATION
+    lat: VEHICLE_CENTER.lat,
+    lon: VEHICLE_CENTER.lon
+  };
+
+  await fetch('/fire', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  loadEvents();
+};
+
 
     // auto-refresh every 2s
     loadEvents();
-    setInterval(loadEvents, 2000);
+    setInterval(loadEvents, 20000);
   </script>
 </body>
 </html>`);
