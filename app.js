@@ -149,7 +149,7 @@ app.get("/", (req, res) => {
     const testBtn = document.getElementById('btn-send-test');
 
     // --- Vehicle definitions and helper functions for assignment & maps ---
-    const VEHICLE_CENTER = { lat: 23.192623, lon: 72.629016 }; // default center (adjust if needed)
+    const VEHICLE_CENTER = { lat: 23.156, lon: 72.666 }; // default center (adjust if needed)
     const vehicles = [
   { id: 1, name: 'Engine 1', lat: 23.1931, lon: 72.6287 }, // Gate 1
   { id: 2, name: 'Engine 2', lat: 23.1919, lon: 72.6302 }, // Hostel side
